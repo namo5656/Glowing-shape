@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Metallic V20 - Color Reflect</title>
+    <style>
+        body { font-family: sans-serif; background: #0f0f0f; color: white; text-align: center; padding: 15px; margin: 0; }
+        .container { max-width: 950px; margin: 0 auto; background: #1e1e1e; padding: 20px; border-radius: 20px; border: 1px solid #333; }
+        .upload-box { background: #2a2a2a; padding: 20px; border: 2px dashed #6c5ce7; border-radius: 15px; cursor: pointer; margin-bottom: 15px; }
+        .preview-area { background: #000; border-radius: 10px; margin: 15px 0; overflow: hidden; border: 1px solid #444; position: relative; }
+        canvas { width: 100%; height: auto; display: block; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; text-align: left; }
+        .control-group { background: #262626; padding: 10px; border-radius: 10px; border: 1px solid #383838; }
+        label { font-size: 11px; color: #00fbff; font-weight: bold; display: block; margin-bottom: 5px; }
+        input { width: 100%; cursor: pointer; }
+        .btn-download { width: 100%; padding: 15px; background: #00fbff; color: #000; border: none; font-weight: bold; border-radius: 12px; margin-top: 15px; cursor: pointer; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3 style="margin:0 0 15px 0;">📀 NEON METALLIC V20 (Color Reflection)</h3>
+    
+    <div class="upload-box" onclick="document.getElementById('imgIn').click()">
+        <p id="txt" style="margin:0;">📂 อัปโหลดรูปภาพ PNG (ใส) เพื่อปรับแต่งแสงสะท้อน</p>
+        <input type="file" id="imgIn" accept="image/*" style="display:none" onchange="loadImg(event)">
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>สีขอบนีออน</label>
+            <input type="color" id="neonColor" value="#ff0055">
+        </div>
+        <div class="control-group" style="border: 1px solid #fff;">
+            <label style="color: #fff;">🌈 สีของแสงสะท้อน</label>
+            <input type="color" id="reflectColor" value="#ffffff">
+        </div>
+        <div class="control-group">
+            <label>ความหนาขอบ</label>
+            <input type="range" id="size" min="1" max="25" value="8">
+        </div>
+        <div class="control-group">
+            <label>ตำแหน่งแสงพาด</label>
+            <input type="range" id="lightPos" min="-500" max="500" value="0">
+        </div>
+        <div class="control-group">
+            <label>องศาแสง (Angle)</label>
+            <input type="range" id="lightTilt" min="0" max="360" value="45">
+        </div>
+        <div class="control-group">
+            <label>ความเข้มแสงพาด</label>
+            <input type="range" id="specStrength" min="0" max="100" value="70">
+        </div>
+        <div class="control-group">
+            <label>ความคมของแสง</label>
+            <input type="range" id="sharpness" min="5" max="45" value="10">
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <canvas id="cvs"></canvas>
+    </div>
+
+    <button class="btn-download" onclick="dl()">📥 ดาวน์โหลดภาพโลหะนีออน V20</button>
+</div>
+
+<script>
+    const cvs = document.getElementById('cvs');
+    const ctx = cvs.getContext('2d');
+    let imgObj = null;
+
+    // ระบบตรวจจับการเปลี่ยนค่าแบบ Real-time
+    const allInputs = document.querySelectorAll('input');
+    allInputs.forEach(input => {
+        input.addEventListener('input', () => { if(imgObj) draw(); });
+    });
+
+    function loadImg(e) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            imgObj = new Image();
+            imgObj.onload = () => {
+                const scale = Math.min(1, 1000 / Math.max(imgObj.width, imgObj.height));
+                cvs.width = imgObj.width * scale;
+                cvs.height = imgObj.height * scale;
+                document.getElementById('txt').innerText = "✅ โหลดรูปสำเร็จ";
+                draw();
+            };
+            imgObj.src = ev.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    }
+
+    function draw() {
+        if (!imgObj) return;
+        const nColor = document.getElementById('neonColor').value;
+        const rColor = document.getElementById('reflectColor').value;
+        const size = parseInt(document.getElementById('size').value);
+        const lightPos = parseInt(document.getElementById('lightPos').value);
+        const lightTilt = parseInt(document.getElementById('lightTilt').value);
+        const specStr = parseInt(document.getElementById('specStrength').value) / 100;
+        const sharp = parseInt(document.getElementById('sharpness').value) / 100;
+
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+        // 1. วาดขอบนีออน
+        ctx.save();
+        ctx.shadowColor = nColor;
+        ctx.shadowBlur = 25;
+        const dArr = [-1,0, 1,0, 0,-1, 0,1];
+        for (let i = 0; i < dArr.length; i+=2) {
+            ctx.drawImage(imgObj, dArr[i]*size, dArr[i+1]*size, cvs.width, cvs.height);
+        }
+        ctx.globalCompositeOperation = 'source-in';
+        ctx.fillStyle = nColor;
+        ctx.fillRect(0,0, cvs.width, cvs.height);
+        ctx.restore();
+
+        // 2. วาดรูปหลัก
+        ctx.drawImage(imgObj, 0, 0, cvs.width, cvs.height);
+
+        // 3. วาดแสงสะท้อนที่ปรับสีได้
+        if (specStr > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'source-atop';
+            
+            const angleRad = (lightTilt - 90) * Math.PI / 180;
+            const cx = cvs.width / 2;
+            const cy = cvs.height / 2;
+            const spread = Math.max(cvs.width, cvs.height);
+
+            const x0 = cx + Math.cos(angleRad) * (spread - lightPos);
+            const y0 = cy + Math.sin(angleRad) * (spread - lightPos);
+            const x1 = cx + Math.cos(angleRad + Math.PI) * (spread + lightPos);
+            const y1 = cy + Math.sin(angleRad + Math.PI) * (spread + lightPos);
+
+            const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+            
+            // แปลงรหัสสีสะท้อนเป็น RGBA เพื่อความคุมความใส
+            const rgb = hexToRgb(rColor);
+            const colorStr = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${specStr})`;
+            const transStr = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`;
+
+            grad.addColorStop(0, 'rgba(0,0,0,0.3)'); // เงาเข้ม
+            grad.addColorStop(0.5 - sharp, transStr);
+            grad.addColorStop(0.5, colorStr); // เส้นแสงสีที่เลือก
+            grad.addColorStop(0.5 + sharp, transStr);
+            grad.addColorStop(1, 'rgba(0,0,0,0.3)'); // เงาเข้ม
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.restore();
+        }
+    }
+
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : {r:255, g:255, b:255};
+    }
+
+    function dl() {
+        if (!imgObj) return;
+        const link = document.createElement('a');
+        link.download = 'neon_metallic_v20.png';
+        link.href = cvs.toDataURL();
+        link.click();
+    }
+</script>
+</body>
+</html>
